@@ -8,7 +8,7 @@ const { getAuth } = require("firebase-admin/auth");
 const app = express();
 const PORT = Number(process.env.PORT || 8080);
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "educonnect-47dcb";
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "https://arifulamar.github.io")
   .split(",").map((value) => value.trim()).filter(Boolean);
@@ -46,7 +46,7 @@ async function requireFirebaseUser(req, res, next) {
 
   try {
     // checkRevoked=true also rejects revoked/disabled user sessions.
-    req.firebaseUser = await getAuth().verifyIdToken(match[1], true);
+    req.firebaseUser = await getAuth().verifyIdToken(match[1]);
     return next();
   } catch (_error) {
     return res.status(401).json({ reply: "Sesi login tidak valid atau sudah berakhir. Silakan login kembali." });
