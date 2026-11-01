@@ -1,4 +1,5 @@
-// Konfigurasi Firebase
+// Firebase Authentication - EduConnect
+// Menggunakan Firebase Compat SDK yang sudah tersedia di folder /firebase.
 const firebaseConfig = {
   apiKey: "AIzaSyDFbAt043YWvZ7wwKvLnOFYYdaR8SwEgOo",
   authDomain: "educonnect-47dcb.firebaseapp.com",
@@ -9,77 +10,142 @@ const firebaseConfig = {
   measurementId: "G-1R7N9T3TSJ"
 };
 
-// Inisialisasi Firebase
-firebase.initializeApp(firebaseConfig);
+// Hindari inisialisasi ganda ketika file ini dipanggil kembali.
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+
 const auth = firebase.auth();
-const provider = new firebase.auth.GoogleAuthProvider();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });
 
-// Cek status login setiap halaman dimuat
-auth.onAuthStateChanged(user => {
-  if (user) {
-    // Kalau user sudah login, refresh session
-    saveSession(user, false);
+const LOGIN_PAGE = "index.html";
+const DASHBOARD_PAGE = "dashboard.php";
+const isLoginPage = () => /(?:^|\/)index\.html$/.test(window.location.pathname);
 
-    // Kalau di halaman login, langsung ke dashboard
-    if (window.location.pathname.includes("index.html")) {
-      window.location.href = "dashboard.php";
+let sessionSyncInProgress = false;
+
+// Simpan identitas Firebase ke session PHP agar dashboard PHP dapat melindungi halaman.
+async function saveSession(user) {
+  if (!user) throw new Error("Pengguna Firebase tidak ditemukan.");
+
+  const response = await fetch("session.php", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: user.displayName || user.email || "Pengguna",
+      email: user.email,
+      photoURL: user.photoURL || ""
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error("Server gagal membuat session (HTTP " + response.status + ").");
+  }
+
+  const data = await response.json();
+  if (!data.success) {
+    throw new Error(data.message || "Gagal membuat session PHP.");
+  }
+  return data;
+}
+
+// Pulihkan hasil login redirect (misalnya popup diblokir browser).
+auth.getRedirectResult().then(async (result) => {
+  if (result && result.user) {
+    await saveSession(result.user);
+    window.location.replace(DASHBOARD_PAGE);
+  }
+}).catch((error) => {
+  console.error("Login redirect gagal:", error);
+  showAuthError(error);
+});
+
+// Periksa status login saat halaman dibuka/di-refresh.
+auth.onAuthStateChanged(async (user) => {
+  if (!user || sessionSyncInProgress) return;
+
+  sessionSyncInProgress = true;
+  try {
+    // Pastikan session PHP terbentuk meskipun tab dimuat ulang.
+    await saveSession(user);
+    if (isLoginPage()) {
+      window.location.replace(DASHBOARD_PAGE);
     }
-  } else {
-    // Kalau belum login dan bukan di halaman login, kembali ke login
-    if (!window.location.pathname.includes("index.html")) {
-      window.location.href = "index.html";
-    }
+  } catch (error) {
+    console.error("Sinkronisasi session gagal:", error);
+    showAuthError(error);
+  } finally {
+    sessionSyncInProgress = false;
   }
 });
 
-// Simpan session ke server
-function saveSession(user, redirectToDashboard) {
-  fetch("session.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      name: user.displayName,
-      email: user.email,
-      photoURL: user.photoURL
-    })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      console.log("Session dibuat/diupdate");
-      if (redirectToDashboard) {
-        window.location.href = "dashboard.php";
+// Dipanggil langsung oleh tombol Login dengan Google.
+async function loginWithGoogle() {
+  const button = document.querySelector(".gsi-material-button");
+  if (button) button.disabled = true;
+
+  try {
+    const result = await auth.signInWithPopup(googleProvider);
+    await saveSession(result.user);
+    window.location.replace(DASHBOARD_PAGE);
+  } catch (error) {
+    console.error("Login Google gagal:", error);
+    if (error.code === "auth/popup-blocked" ||
+        error.code === "auth/popup-closed-by-user" ||
+        error.code === "auth/operation-not-supported-in-this-environment") {
+      try {
+        await auth.signInWithRedirect(googleProvider);
+        return;
+      } catch (redirectError) {
+        console.error("Login redirect gagal:", redirectError);
+        showAuthError(redirectError);
       }
     } else {
-      console.error("Gagal membuat session.");
+      showAuthError(error);
     }
-  })
-  .catch(err => {
-    console.error("Error kirim session:", err);
-  });
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 
-// Fungsi login manual (dipanggil hanya dari klik user)
-function loginWithGoogle() {
-  auth.signInWithPopup(provider)
-    .then(result => {
-      saveSession(result.user, true);
-    })
-    .catch(error => {
-      if (error.code === "auth/popup-blocked") {
-        console.warn("Popup diblokir, coba pakai redirect.");
-        auth.signInWithRedirect(provider);
-      } else {
-        console.error("Login gagal:", error.message);
-      }
+// Logout Firebase dan session PHP.
+async function logout() {
+  try {
+    await auth.signOut();
+    await fetch("logout.php", {
+      method: "POST",
+      credentials: "same-origin"
     });
+  } catch (error) {
+    console.error("Logout gagal:", error);
+  } finally {
+    window.location.replace(LOGIN_PAGE);
+  }
 }
 
-// Fungsi logout
-function logout() {
-  auth.signOut().then(() => {
-    fetch("logout.php").then(() => {
-      window.location.href = "index.html";
-    });
-  });
+function showAuthError(error) {
+  const messages = {
+    "auth/unauthorized-domain":
+      "Domain situs belum diizinkan di Firebase Authentication. Tambahkan domain pada Authorized domains.",
+    "auth/operation-not-allowed":
+      "Provider Google belum diaktifkan di Firebase Authentication.",
+    "auth/invalid-api-key":
+      "API Key Firebase tidak valid. Periksa konfigurasi Firebase.",
+    "auth/network-request-failed":
+      "Koneksi internet bermasalah. Periksa jaringan lalu coba kembali."
+  };
+  const message = messages[error && error.code] ||
+    (error && error.message) || "Terjadi kesalahan autentikasi.";
+  const target = document.getElementById("auth-error");
+  if (target) {
+    target.textContent = message;
+    target.style.display = "block";
+  } else {
+    alert("Login Firebase: " + message);
+  }
 }
+
+window.loginWithGoogle = loginWithGoogle;
+window.logout = logout;
