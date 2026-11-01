@@ -70,16 +70,16 @@ app.post("/api/chat", requireFirebaseUser, userRateLimit, async (req, res) => {
   if (message.length > 8000) return res.status(413).json({ reply: "Pesan terlalu panjang. Maksimal 8.000 karakter." });
 
   // Retain the existing lightweight table example without spending Gemini quota.
-  if (/^tabel\\s*/i.test(message)) {
+  if (/^tabel\s*/i.test(message)) {
     const html = "<table border='1' cellpadding='5' cellspacing='0'><tr><th>Nama</th><th>Nilai</th></tr><tr><td>Ani</td><td>90</td></tr><tr><td>Budi</td><td>80</td></tr></table>";
     return res.json({ type: "table", html });
   }
 
-  const chartMatch = message.match(/^grafik\\s*(.*)$/i);
+  const chartMatch = message.match(/^grafik\s*(.*)$/i);
   if (chartMatch) {
     const labels = [];
     const values = [];
-    for (const pair of chartMatch[1].trim().split(/\\s+/)) {
+    for (const pair of chartMatch[1].trim().split(/\s+/)) {
       if (!pair.includes(":")) continue;
       const [name, rawValue] = pair.split(":", 2);
       const value = Number.parseInt(rawValue.trim(), 10);
@@ -112,10 +112,10 @@ app.post("/api/chat", requireFirebaseUser, userRateLimit, async (req, res) => {
       return res.status(502).json({ reply: "Layanan Gemini sedang bermasalah. Silakan coba kembali." });
     }
 
-    const reply = result?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("\\n").trim();
+    const reply = result?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("\n").trim();
     if (!reply) return res.status(502).json({ reply: "Gemini tidak memberikan jawaban." });
 
-    const imageMatch = reply.match(/!\\[[^\\]]*\\]\\((https?:\\/\\/[^\\s)]+)\\)/);
+    const imageMatch = reply.match(/!\[[^\]]*\]\((https?:\/\/[^\s)]+)\)/);
     if (imageMatch) return res.json({ type: "image", url: imageMatch[1], caption: "Gambar dari Gemini." });
     return res.json({ type: "text", reply });
   } catch (error) {
