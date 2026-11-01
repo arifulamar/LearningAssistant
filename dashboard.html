@@ -931,13 +931,28 @@ avatar.innerHTML = sender === "bot"
     appendMessage("bot", "Sedang mengetik...");
 
     try {
-      const response = await fetch("chat-gemini.php", {
+      const user = firebase.auth().currentUser;
+      if (!user) throw new Error("Sesi login berakhir. Silakan login kembali.");
+      const idToken = await user.getIdToken();
+
+      const apiBase = window.LEARNING_ASSISTANT_API_URL;
+      if (!apiBase || apiBase.includes("GANTI-DENGAN")) {
+        throw new Error("Alamat backend Cloud Run belum dikonfigurasi.");
+      }
+
+      const response = await fetch(apiBase.replace(/\\/$/, "") + "/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + idToken
+        },
         body: JSON.stringify({ message: text })
       });
 
       const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.reply || "Permintaan ke layanan AI gagal.");
+      }
 
       // hapus placeholder "sedang mengetik..."
       const messages = document.getElementById("messages");
