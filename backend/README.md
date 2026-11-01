@@ -5,7 +5,7 @@ Backend Node.js ini menjadi perantara aman antara GitHub Pages dan Gemini API. B
 ## Keamanan yang diterapkan
 
 - Gemini API key hanya dibaca dari Secret Manager melalui GEMINI_API_KEY.
-- Firebase ID token diverifikasi server-side, termasuk pemeriksaan token dicabut.
+- Firebase ID token diverifikasi server-side, beserta tanda tangan dan masa berlakunya.
 - CORS dibatasi ke origin GitHub Pages yang diizinkan.
 - JSON body dibatasi 20 KB dan pesan 8.000 karakter.
 - Pembatasan awal 15 permintaan/menit per pengguna per instance.
@@ -84,7 +84,7 @@ gcloud run deploy learningassistant-api \
   --region asia-southeast2 \
   --allow-unauthenticated \
   --service-account learningassistant-runtime@educonnect-47dcb.iam.gserviceaccount.com \
-  --set-env-vars FIREBASE_PROJECT_ID=educonnect-47dcb,ALLOWED_ORIGINS=https://arifulamar.github.io,GEMINI_MODEL=gemini-2.5-flash \
+  --set-env-vars FIREBASE_PROJECT_ID=educonnect-47dcb,ALLOWED_ORIGINS=https://arifulamar.github.io,GEMINI_MODEL=gemini-3.8-flash \
   --set-secrets GEMINI_API_KEY=gemini-api-key:1 \
   --max-instances 3 \
   --concurrency 20 \
