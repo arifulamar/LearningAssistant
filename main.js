@@ -1,4 +1,4 @@
-// Konfigurasi Firebase
+// EduConnect - Firebase Authentication untuk GitHub Pages (static hosting)
 const firebaseConfig = {
   apiKey: "AIzaSyDFbAt043YWvZ7wwKvLnOFYYdaR8SwEgOo",
   authDomain: "educonnect-47dcb.firebaseapp.com",
@@ -9,77 +9,90 @@ const firebaseConfig = {
   measurementId: "G-1R7N9T3TSJ"
 };
 
-// Inisialisasi Firebase
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+
 const auth = firebase.auth();
-const provider = new firebase.auth.GoogleAuthProvider();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });
 
-// Cek status login setiap halaman dimuat
-auth.onAuthStateChanged(user => {
-  if (user) {
-    // Kalau user sudah login, refresh session
-    saveSession(user, false);
+const LOGIN_PAGE = "index.html";
+const DASHBOARD_PAGE = "dashboard.html";
+const currentPage = window.location.pathname.split("/").pop();
+const isDashboard = currentPage === DASHBOARD_PAGE;
+const isLoginPage = !isDashboard;
 
-    // Kalau di halaman login, langsung ke dashboard
-    if (window.location.pathname.includes("index.html")) {
-      window.location.href = "dashboard.php";
-    }
+function showAuthError(error) {
+  const messages = {
+    "auth/unauthorized-domain": "Domain situs belum diizinkan. Tambahkan domain GitHub Pages di Firebase Authentication > Settings > Authorized domains.",
+    "auth/operation-not-allowed": "Login Google belum diaktifkan di Firebase Authentication.",
+    "auth/invalid-api-key": "API Key Firebase tidak valid. Periksa konfigurasi Firebase.",
+    "auth/network-request-failed": "Koneksi internet bermasalah. Silakan coba kembali.",
+    "auth/popup-blocked": "Popup login diblokir browser. Izinkan popup atau coba kembali."
+  };
+  const message = messages[error?.code] || error?.message || "Terjadi kesalahan saat login.";
+  const target = document.getElementById("auth-error");
+  if (target) {
+    target.textContent = message;
+    target.style.display = "block";
   } else {
-    // Kalau belum login dan bukan di halaman login, kembali ke login
-    if (!window.location.pathname.includes("index.html")) {
-      window.location.href = "index.html";
+    alert(message);
+  }
+}
+
+// Pulihkan sesi dari alur signInWithRedirect.
+auth.getRedirectResult().catch(showAuthError);
+
+// Firebase Auth adalah sumber status login; tidak membutuhkan PHP session.
+auth.onAuthStateChanged((user) => {
+  if (user) {
+    if (isLoginPage) {
+      window.location.replace(DASHBOARD_PAGE);
+      return;
     }
+    const photo = document.getElementById("user-photo");
+    if (photo && user.photoURL) photo.src = user.photoURL;
+    const name = document.getElementById("user-name");
+    if (name) name.textContent = user.displayName || user.email || "Pengguna";
+    const email = document.getElementById("user-email");
+    if (email) email.textContent = user.email || "";
+  } else if (isDashboard) {
+    window.location.replace(LOGIN_PAGE);
   }
 });
 
-// Simpan session ke server
-function saveSession(user, redirectToDashboard) {
-  fetch("session.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      name: user.displayName,
-      email: user.email,
-      photoURL: user.photoURL
-    })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      console.log("Session dibuat/diupdate");
-      if (redirectToDashboard) {
-        window.location.href = "dashboard.php";
+async function loginWithGoogle() {
+  const button = document.querySelector(".gsi-material-button");
+  if (button) button.disabled = true;
+
+  try {
+    await auth.signInWithPopup(googleProvider);
+    // onAuthStateChanged akan mengarahkan ke dashboard.html.
+  } catch (error) {
+    console.error("Login Google gagal:", error);
+    if (["auth/popup-blocked", "auth/popup-closed-by-user"].includes(error.code)) {
+      try {
+        await auth.signInWithRedirect(googleProvider);
+        return;
+      } catch (redirectError) {
+        showAuthError(redirectError);
       }
     } else {
-      console.error("Gagal membuat session.");
+      showAuthError(error);
     }
-  })
-  .catch(err => {
-    console.error("Error kirim session:", err);
-  });
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 
-// Fungsi login manual (dipanggil hanya dari klik user)
-function loginWithGoogle() {
-  auth.signInWithPopup(provider)
-    .then(result => {
-      saveSession(result.user, true);
-    })
-    .catch(error => {
-      if (error.code === "auth/popup-blocked") {
-        console.warn("Popup diblokir, coba pakai redirect.");
-        auth.signInWithRedirect(provider);
-      } else {
-        console.error("Login gagal:", error.message);
-      }
-    });
+async function logout() {
+  try {
+    await auth.signOut();
+    window.location.replace(LOGIN_PAGE);
+  } catch (error) {
+    console.error("Logout gagal:", error);
+    showAuthError(error);
+  }
 }
 
-// Fungsi logout
-function logout() {
-  auth.signOut().then(() => {
-    fetch("logout.php").then(() => {
-      window.location.href = "index.html";
-    });
-  });
-}
+window.loginWithGoogle = loginWithGoogle;
+window.logout = logout;

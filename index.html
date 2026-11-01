@@ -200,7 +200,8 @@ body {
    
     <h1 class="login-title">Selamat Datang di EduConnect</h1>
     <p class="login-desc">Silakan login dengan akun Google Anda</p>
-  <button class="gsi-material-button" onclick="loginWithGoogle()">
+  <p id="auth-error" role="alert" style="display:none;color:#b42318;margin:0 0 16px;font-size:.9rem"></p>
+  <button type="button" class="gsi-material-button" onclick="loginWithGoogle()">
   <div class="gsi-material-button-state"></div>
   <div class="gsi-material-button-content-wrapper">
     <div class="gsi-material-button-icon">

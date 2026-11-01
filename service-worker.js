@@ -1,11 +1,11 @@
 // Nama cache
-const CACHE_NAME = "educonnect-cache-v1";
+const CACHE_NAME = "educonnect-cache-v2";
 
 // File yang mau dicache (opsional)
 const FILES_TO_CACHE = [
   "/", // Halaman utama
   "/index.html",
-  "/dashboard.php",
+  "/dashboard.html",
   "/styles.css",
   "/main.js"
 ];

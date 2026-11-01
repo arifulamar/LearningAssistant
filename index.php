@@ -682,63 +682,9 @@ table {
    <!-- <footer>
         &copy; EDUCONNECT. All rights reserved.
     </footer> -->
-<script>
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyDFbAt043YWvZ7wwKvLnOFYYdaR8SwEgOo",
-  authDomain: "educonnect-47dcb.firebaseapp.com",
-  projectId: "educonnect-47dcb",
-  storageBucket: "educonnect-47dcb.firebasestorage.app",
-  messagingSenderId: "271361548411",
-  appId: "1:271361548411:web:353562a08eabe0ba9082de",
-  measurementId: "G-1R7N9T3TSJ"
-};
 
-  firebase.initializeApp(firebaseConfig);
 
-  // Cek apakah user sudah login
-  firebase.auth().signInWithPopup(provider) => {
-    if (!user) {
-      // Jika tidak login, arahkan ke halaman login
-      window.location.href = "index.php";
-    } else {
-      // Jika login, tampilkan info user
-      document.getElementById('user-name').innerText = user.displayName;
-      document.getElementById('user-email').innerText = user.email;
-      document.getElementById('user-photo').src = user.photoURL;
-    }
-  });
 
-  function logout() {
-    firebase.auth().signOut().then(() => {
-      window.location.href = "index.php";
-    });
-  }
-</script>
-
-<script>
-  // Inisialisasi Firebase (jika belum)
-  const firebaseConfig = {
-    apiKey: "API_KEY_MU",
-    authDomain: "PROJECT.firebaseapp.com",
-    projectId: "PROJECT",
-    storageBucket: "PROJECT.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:abcdef"
-  };
-  firebase.initializeApp(firebaseConfig);
-
-  // Logout
-  document.getElementById('logout-btn').addEventListener('click', function (e) {
-    e.preventDefault(); // Hindari reload
-    firebase.auth().signOut().then(() => {
-      // Setelah logout, arahkan ke halaman login
-      window.location.href = "index.html"; // atau index.php
-    }).catch((error) => {
-      alert("Logout gagal: " + error.message);
-    });
-  });
-</script>
 
 <script>
     // Script untuk toggle dropdown
