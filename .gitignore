@@ -1,0 +1,15 @@
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+service-account*.json
+*-service-account*.json
+
+# Dependencies and local runtime files
+node_modules/
+backend/node_modules/
+.DS_Store
+npm-debug.log
+error_log

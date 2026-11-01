@@ -796,13 +796,28 @@ avatar.innerHTML = sender === "bot"
     appendMessage("bot", "Sedang mengetik...");
 
     try {
-      const response = await fetch("chat-gemini.php", {
+      const user = firebase.auth().currentUser;
+      if (!user) throw new Error("Sesi login berakhir. Silakan login kembali.");
+      const idToken = await user.getIdToken();
+
+      const apiBase = window.LEARNING_ASSISTANT_API_URL;
+      if (!apiBase || apiBase.includes("GANTI-DENGAN")) {
+        throw new Error("Alamat backend Cloud Run belum dikonfigurasi.");
+      }
+
+      const response = await fetch(apiBase.replace(/\\/$/, "") + "/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + idToken
+        },
         body: JSON.stringify({ message: text })
       });
 
       const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.reply || "Permintaan ke layanan AI gagal.");
+      }
 
       // hapus placeholder "sedang mengetik..."
       const messages = document.getElementById("messages");
@@ -896,14 +911,22 @@ avatar.innerHTML = sender === "bot"
   }
 
   // Markdown parser sederhana
+  function escapeHTML(value) {
+    return String(value).replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[char]);
+  }
+
   function renderMarkdown(md) {
-    return md
+    let safe = escapeHTML(md);
+    safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    return safe
       .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
       .replace(/\*(.*?)\*/g, "<i>$1</i>")
       .replace(/`(.*?)`/g, "<code>$1</code>")
       .replace(/\n/g, "<br>")
-      .replace(/^- (.*)$/gm, "• $1")
-      .replace(/\[(.*?)\]\((.*?)\)/g, "<a href='$2' target='_blank'>$1</a>");
+      .replace(/^- (.*)$/gm, "• $1");
   }
 
   async function sendMessage() {
@@ -916,13 +939,28 @@ avatar.innerHTML = sender === "bot"
     appendMessage("bot", "Sedang mengetik...");
 
     try {
-      const response = await fetch("chat-gemini.php", {
+      const user = firebase.auth().currentUser;
+      if (!user) throw new Error("Sesi login berakhir. Silakan login kembali.");
+      const idToken = await user.getIdToken();
+
+      const apiBase = window.LEARNING_ASSISTANT_API_URL;
+      if (!apiBase || apiBase.includes("GANTI-DENGAN")) {
+        throw new Error("Alamat backend Cloud Run belum dikonfigurasi.");
+      }
+
+      const response = await fetch(apiBase.replace(/\\/$/, "") + "/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + idToken
+        },
         body: JSON.stringify({ message: text })
       });
 
       const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.reply || "Permintaan ke layanan AI gagal.");
+      }
 
       // hapus placeholder "sedang mengetik..."
       const messages = document.getElementById("messages");
@@ -943,12 +981,14 @@ avatar.innerHTML = sender === "bot"
       }
 
     } catch (err) {
-      appendMessage("bot", "⚠️ Error: " + err.message);
+      const messages = document.getElementById("messages");
+      if (messages.lastChild) messages.lastChild.remove();
+      appendMessage("bot", "⚠️ " + err.message);
     }
   }
 </script>
 
-
+<script src="api-config.js"></script>
 <script src="main.js"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 // Nama cache
-const CACHE_NAME = "educonnect-cache-v2";
+const CACHE_NAME = "educonnect-cache-v3";
 
 // File yang mau dicache (opsional)
 const FILES_TO_CACHE = [
@@ -7,7 +7,8 @@ const FILES_TO_CACHE = [
   "/index.html",
   "/dashboard.html",
   "/styles.css",
-  "/main.js"
+  "/main.js",
+  "/api-config.js"
 ];
 
 // Instal service worker
@@ -39,6 +40,11 @@ self.addEventListener("activate", (event) => {
 // Fetch handler
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
+
+  // Jangan cache POST atau request lintas origin (termasuk API Cloud Run).
+  if (event.request.method !== "GET" || url.origin !== self.location.origin) {
+    return;
+  }
 
   // ⛔ Jangan intercept request ke Google / Firebase Auth
   if (
